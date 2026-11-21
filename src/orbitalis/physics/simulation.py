@@ -1,4 +1,5 @@
 from orbitalis.physics.body import CelestialBody
+from orbitalis.physics.forces import gravitational_accelerations
 
 
 class Simulation:
@@ -37,45 +38,15 @@ class Simulation:
         """Advance the simulation by one time step."""
 
         dt = self.time_step
-        accelerations = []
 
-        # Calculate gravitational acceleration
-        for i, body in enumerate(self.bodies):
+        # Delegate force calculation to the physics force module.
+        accelerations = gravitational_accelerations(
+            bodies=self.bodies,
+            gravitational_constant=self.G,
+        )
 
-            ax = 0.0
-            ay = 0.0
-
-            for j, other in enumerate(self.bodies):
-
-                if i == j:
-                    continue
-
-                dx = other.x - body.x
-                dy = other.y - body.y
-
-                distance_squared = dx**2 + dy**2
-
-                if distance_squared == 0:
-                    raise ValueError(
-                        "Two bodies occupy the same position."
-                    )
-
-                distance_cubed = distance_squared ** 1.5
-
-                factor = (
-                    self.G * other.mass / distance_cubed
-                )
-
-                ax += factor * dx
-                ay += factor * dy
-
-            accelerations.append((ax, ay))
-
-        # Update velocities and positions
-        for body, (ax, ay) in zip(
-            self.bodies, accelerations
-        ):
-
+        # Update velocities and positions.
+        for body, (ax, ay) in zip(self.bodies, accelerations):
             body.vx += ax * dt
             body.vy += ay * dt
 
