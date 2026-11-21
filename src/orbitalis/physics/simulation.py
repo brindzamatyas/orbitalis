@@ -1,5 +1,6 @@
 from orbitalis.physics.body import CelestialBody
 from orbitalis.physics.forces import gravitational_accelerations
+from orbitalis.physics.integrators import Integrator, SemiImplicitEuler
 
 
 class Simulation:
@@ -10,6 +11,7 @@ class Simulation:
         bodies: list[CelestialBody] | None = None,
         gravitational_constant: float = 6.67430e-11,
         time_step: float = 1.0,
+        integrator: Integrator | None = None,
     ):
         if gravitational_constant <= 0:
             raise ValueError("Gravitational constant must be positive.")
@@ -21,6 +23,10 @@ class Simulation:
         self.G = gravitational_constant
         self.time_step = time_step
         self.simulation_time = 0.0
+
+        self.integrator = (
+            integrator if integrator is not None else SemiImplicitEuler()
+        )
 
         for body in self.bodies:
             if body.mass <= 0:
@@ -37,20 +43,18 @@ class Simulation:
     def step(self):
         """Advance the simulation by one time step."""
 
-        dt = self.time_step
+        def acceleration_function(
+            bodies: list[CelestialBody],
+        ) -> list[tuple[float, float]]:
+            return gravitational_accelerations(
+                bodies=bodies,
+                gravitational_constant=self.G,
+            )
 
-        # Delegate force calculation to the physics force module.
-        accelerations = gravitational_accelerations(
+        self.integrator.step(
             bodies=self.bodies,
-            gravitational_constant=self.G,
+            time_step=self.time_step,
+            acceleration_function=acceleration_function,
         )
 
-        # Update velocities and positions.
-        for body, (ax, ay) in zip(self.bodies, accelerations):
-            body.vx += ax * dt
-            body.vy += ay * dt
-
-            body.x += body.vx * dt
-            body.y += body.vy * dt
-
-        self.simulation_time += dt
+        self.simulation_time += self.time_step
